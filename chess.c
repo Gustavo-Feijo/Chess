@@ -272,7 +272,7 @@ bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player)
 
     for (int dir = 0; dir < 4; dir++)
     {
-        for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i++, j++)
+        for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i+=directions[dir][0], j+=directions[dir][1])
         {
             if ((chessBoard[i][j] * player) > 0)
             {
@@ -285,6 +285,42 @@ bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player)
             }
 
             if ((chessBoard[i][j] == bishop) || (chessBoard[i][j] == queen))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Check for any attack on a column/row.
+//Works almost exactly as the diagonal checking.
+bool isLineThreat(int chessBoard[8][8], int x, int y, int player)
+{
+    int rook = 6 * player * -1;
+    int queen = 3 * player * -1;
+    int directions[4][2] =
+        {
+            {0, -1},
+            {0, 1},
+            {1, 0},
+            {-1, 0}};
+
+    for (int dir = 0; dir < 4; dir++)
+    {
+        for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i+=directions[dir][0], j+=directions[dir][1])
+        {
+            if ((chessBoard[i][j] * player) > 0)
+            {
+                break;
+            }
+
+            if (((chessBoard[i][j] != rook) && (chessBoard[i][j] != queen)) && (chessBoard[i][j] != 0))
+            {
+                break;
+            }
+
+            if ((chessBoard[i][j] == rook) || (chessBoard[i][j] == queen))
             {
                 return true;
             }
