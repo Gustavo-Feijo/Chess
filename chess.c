@@ -3,11 +3,13 @@
 #include <allegro5/allegro_image.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#define bitmap_size 100
 void draw_pieces(int chessPieces[8][8], ALLEGRO_BITMAP *bitmap);
 int *pieceBitmapCoordinates(int chessPieces);
 void draw_possible_movements(int chessPieces[8][8], int chessPiece, int x, int y);
 int *getClickPosition(int x, int y);
+bool isThreatened(int chessBoard[8][8], int x, int y, int player);
+bool isHorseThreat(int chessBoard[8][8], int x, int y, int player);
 
 int main()
 {
@@ -59,6 +61,9 @@ int main()
     // Innitializes the bitmap for the chess pieces.
     ALLEGRO_BITMAP *piecesBitmap = al_load_bitmap("chessPieces.png");
 
+    // Creates a 2D array for the board, where:
+    //  0 - Empty || 1 - Pawn ||  2 - King ||  3 - Queen ||  4 - Bishop ||  5 - Knight || 6 - Rook
+    // Negative values are the White pieces.
     int pieces[8][8] = {
         {6, 5, 4, 3, 2, 4, 5, 6},
         {1, 1, 1, 1, 1, 1, 1, 1},
@@ -74,7 +79,9 @@ int main()
     ALLEGRO_EVENT event;
     ALLEGRO_MOUSE_STATE mouse;
 
+    // White pieces to move first.
     int current_player = -1;
+
     int current_piece;
     while (1)
     {
@@ -119,13 +126,13 @@ void draw_pieces(int chessBoard[8][8], ALLEGRO_BITMAP *bitmap)
         {
             // Calculates the color of each rectangle in order to draw the border.
             ALLEGRO_COLOR color = (i + j) % 2 == 0 ? al_map_rgb(255, 255, 255) : al_map_rgb(51, 20, 0);
-            al_draw_filled_rectangle(50 + (j * 100), 50 + (i * 100), 50 + (j * 100) + 100, 50 + (i * 100) + 100, color);
+            al_draw_filled_rectangle(50 + (j * bitmap_size), 50 + (i * bitmap_size), 50 + (j * bitmap_size) + bitmap_size, 50 + (i * bitmap_size) + bitmap_size, color);
 
             int *bitmapPositions;
 
             // Get the piece to draw with the bitmaps position.
             bitmapPositions = pieceBitmapCoordinates(chessBoard[i][j]);
-            al_draw_bitmap_region(bitmap, bitmapPositions[0], bitmapPositions[1], 100, 100, 50 + (j * 100), 50 + (i * 100), 0);
+            al_draw_bitmap_region(bitmap, bitmapPositions[0], bitmapPositions[1], bitmap_size, bitmap_size, 50 + (j * bitmap_size), 50 + (i * bitmap_size), 0);
 
             // Frees the allocated memory.
             free(bitmapPositions);
@@ -156,39 +163,40 @@ int *pieceBitmapCoordinates(int chessPieces)
     switch (abs(chessPieces))
     {
     case 1:
-        position[0] = 500;
+        position[0] = bitmap_size * 5;
         break;
     case 2:
         position[0] = 0;
         break;
     case 3:
-        position[0] = 100;
+        position[0] = bitmap_size;
         break;
     case 4:
-        position[0] = 200;
+        position[0] = bitmap_size * 2;
         break;
     case 5:
-        position[0] = 300;
+        position[0] = bitmap_size * 3;
         break;
     case 6:
-        position[0] = 400;
+        position[0] = bitmap_size * 4;
         break;
     }
 
     // Gets the Y coordinate based on the color, if it's black, gets the second row of the bitmap.
-    position[1] = 0 + (color * 100);
+    position[1] = 0 + (color * bitmap_size);
     return position;
 }
 
-//Returns which coordinate (X,Y) was clicked on the board.
+// Returns which coordinate (X,Y) was clicked on the board.
 int *getClickPosition(int x, int y)
 {
     static int position[2] = {-1, -1};
 
+    // Checks if the click is in the board or in the boarder, if it's in the boarder, returns -1 to both positions.
     if ((x > 50 && x < 850) && (y > 50 && y < 850))
     {
-        position[0] = (x - 50) / 100;
-        position[1] = (y - 50) / 100;
+        position[0] = (x - 50) / bitmap_size;
+        position[1] = (y - 50) / bitmap_size;
     }
     else
     {
@@ -196,4 +204,55 @@ int *getClickPosition(int x, int y)
         position[1] = -1;
     }
     return position;
+}
+
+bool isThreatened(int chessBoard[8][8], int x, int y, int player)
+{
+    if (isHorseThreat(chessBoard, x, y, player))
+    {
+        return true;
+    }
+}
+
+// Checks if there is any knight attacking the (X,Y) coordinate, pass the current player to ensure it's a opponent knight.
+bool isHorseThreat(int chessBoard[8][8], int x, int y, int player)
+{
+    // i = y - 2 checks for the positions below the current, then increases by 4 to check the above positions.
+    for (int i = y - 2; i <= y + 2; i += 4)
+    {
+        // Checks if it's not offboard, if it is, then continue to the next loop interaction.
+        if (i > 8 || i < 0)
+            continue;
+
+        // Procedes to check the two possible moves.
+        for (int j = x - 1; j <= x + 1; j += 2)
+        {
+
+            if (j > 8 || j < 0)
+                continue;
+            // Checks if the position is equal to a knight of the opposite color. Player * -1 indicates that is from the opponent.
+            if (chessBoard[i][j] == player * 5 * -1)
+            {
+                return true;
+            }
+        }
+    }
+    // Does the same as above, but for the horizontal options.
+    for (int j = x - 2; j <= x + 2; j += 4)
+    {
+        if (j > 8 || j < 0)
+            continue;
+        for (int i = y - 1; i <= y + 1; i += 2)
+        {
+            if (i > 8 || i < 0)
+                continue;
+            if (chessBoard[i][j] == player * 5 * -1)
+            {
+                return true;
+            }
+        }
+    }
+
+    // If there is no threat, returns false.
+    return false;
 }
