@@ -10,6 +10,7 @@ void draw_possible_movements(int chessPieces[8][8], int chessPiece, int x, int y
 int *getClickPosition(int x, int y);
 bool isThreatened(int chessBoard[8][8], int x, int y, int player);
 bool isHorseThreat(int chessBoard[8][8], int x, int y, int player);
+bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player);
 
 int main()
 {
@@ -254,5 +255,40 @@ bool isHorseThreat(int chessBoard[8][8], int x, int y, int player)
     }
 
     // If there is no threat, returns false.
+    return false;
+}
+
+// Check for any attack on a diagonal.
+bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player)
+{
+    int bishop = 4 * player * -1;
+    int queen = 3 * player * -1;
+    int directions[4][2] =
+        {
+            {-1, -1},
+            {-1, 1},
+            {1, -1},
+            {1, 1}};
+
+    for (int dir = 0; dir < 4; dir++)
+    {
+        for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i++, j++)
+        {
+            if ((chessBoard[i][j] * player) > 0)
+            {
+                break;
+            }
+
+            if (((chessBoard[i][j] != bishop) && (chessBoard[i][j] != queen)) && (chessBoard[i][j] != 0))
+            {
+                break;
+            }
+
+            if ((chessBoard[i][j] == bishop) || (chessBoard[i][j] == queen))
+            {
+                return true;
+            }
+        }
+    }
     return false;
 }
