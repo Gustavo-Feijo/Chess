@@ -3,7 +3,9 @@
 #include <allegro5/allegro_image.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #define bitmap_size 100
+
 void draw_pieces(int chessPieces[8][8], ALLEGRO_BITMAP *bitmap);
 int *pieceBitmapCoordinates(int chessPieces);
 void draw_possible_movements(int chessPieces[8][8], int chessPiece, int x, int y);
@@ -11,6 +13,17 @@ int *getClickPosition(int x, int y);
 bool isThreatened(int chessBoard[8][8], int x, int y, int player);
 bool isHorseThreat(int chessBoard[8][8], int x, int y, int player);
 bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player);
+bool isPawnThreat(int chessBoard[8][8], int x, int y, int player);
+
+enum Pieces
+{
+    P = 1,
+    K = 2,
+    Q = 3,
+    B = 4,
+    N = 5,
+    R = 6
+};
 
 int main()
 {
@@ -66,14 +79,14 @@ int main()
     //  0 - Empty || 1 - Pawn ||  2 - King ||  3 - Queen ||  4 - Bishop ||  5 - Knight || 6 - Rook
     // Negative values are the White pieces.
     int pieces[8][8] = {
-        {6, 5, 4, 3, 2, 4, 5, 6},
-        {1, 1, 1, 1, 1, 1, 1, 1},
+        {R, N, B, Q, K, B, N, R},
+        {P, P, P, P, P, P, P, P},
         {0, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0},
-        {-1, -1, -1, -1, -1, -1, -1, -1},
-        {-6, -5, -4, -3, -2, -4, -5, -6}};
+        {-P, -P, -P, -P, -P, -P, -P, -P},
+        {-R, -N, -B, -Q, -K, -B, -N, -R}};
 
     draw_pieces(pieces, piecesBitmap);
 
@@ -156,7 +169,7 @@ int *pieceBitmapCoordinates(int chessPieces)
     int *position = malloc(2 * sizeof(int));
     if (position == NULL)
     {
-        fprintf(stderr, "Memory allocation failed\n");
+        printf("Memory allocation failed\n");
         exit(EXIT_FAILURE);
     }
 
@@ -232,7 +245,7 @@ bool isHorseThreat(int chessBoard[8][8], int x, int y, int player)
             if (j > 8 || j < 0)
                 continue;
             // Checks if the position is equal to a knight of the opposite color. Player * -1 indicates that is from the opponent.
-            if (chessBoard[i][j] == player * 5 * -1)
+            if (chessBoard[i][j] == player * N * -1)
             {
                 return true;
             }
@@ -247,7 +260,7 @@ bool isHorseThreat(int chessBoard[8][8], int x, int y, int player)
         {
             if (i > 8 || i < 0)
                 continue;
-            if (chessBoard[i][j] == player * 5 * -1)
+            if (chessBoard[i][j] == player * N * -1)
             {
                 return true;
             }
@@ -261,8 +274,8 @@ bool isHorseThreat(int chessBoard[8][8], int x, int y, int player)
 // Check for any attack on a diagonal.
 bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player)
 {
-    int bishop = 4 * player * -1;
-    int queen = 3 * player * -1;
+    int bishop = B * player * -1;
+    int queen = Q * player * -1;
     int directions[4][2] =
         {
             {-1, -1},
@@ -272,7 +285,7 @@ bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player)
 
     for (int dir = 0; dir < 4; dir++)
     {
-        for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i+=directions[dir][0], j+=directions[dir][1])
+        for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i += directions[dir][0], j += directions[dir][1])
         {
             if ((chessBoard[i][j] * player) > 0)
             {
@@ -294,11 +307,11 @@ bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player)
 }
 
 // Check for any attack on a column/row.
-//Works almost exactly as the diagonal checking.
+// Works almost exactly as the diagonal checking.
 bool isLineThreat(int chessBoard[8][8], int x, int y, int player)
 {
-    int rook = 6 * player * -1;
-    int queen = 3 * player * -1;
+    int rook = R * player * -1;
+    int queen = Q * player * -1;
     int directions[4][2] =
         {
             {0, -1},
@@ -308,7 +321,7 @@ bool isLineThreat(int chessBoard[8][8], int x, int y, int player)
 
     for (int dir = 0; dir < 4; dir++)
     {
-        for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i+=directions[dir][0], j+=directions[dir][1])
+        for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i += directions[dir][0], j += directions[dir][1])
         {
             if ((chessBoard[i][j] * player) > 0)
             {
@@ -321,6 +334,39 @@ bool isLineThreat(int chessBoard[8][8], int x, int y, int player)
             }
 
             if ((chessBoard[i][j] == rook) || (chessBoard[i][j] == queen))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+bool isPawnThreat(int chessBoard[8][8], int x, int y, int player)
+{
+    for (int i = -1; i <= 1; i++)
+    {
+        if (((x + i) > 8 || (x + i) < 0) || ((y + player) > 8 || (y + player) < 0))
+        {
+            continue;
+        }
+        if (chessBoard[x + i][y + player] == player * -1 * P)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+bool isKingThreat(int chessBoard[8][8], int x, int y, int player)
+{
+    for (int i = -1; i <= 1; i++)
+    {
+        for (int j = -1; j <= 1; j++)
+        {
+            if ((i > 8 && i < 0) || (j > 8 && j < 0))
+            {
+                continue;
+            }
+            if (chessBoard[i][j] == K * player * -1)
             {
                 return true;
             }
