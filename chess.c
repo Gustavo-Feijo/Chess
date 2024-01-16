@@ -6,14 +6,17 @@
 #include <stdbool.h>
 #define bitmap_size 100
 
+typedef bool (*ThreatFunction)(int[][8], int, int, int);
+
 void draw_pieces(int chessPieces[8][8], ALLEGRO_BITMAP *bitmap);
 int *pieceBitmapCoordinates(int chessPieces);
-void draw_possible_movements(int chessPieces[8][8], int chessPiece, int x, int y);
 int *getClickPosition(int x, int y);
-bool isThreatened(int chessBoard[8][8], int x, int y, int player);
 bool isHorseThreat(int chessBoard[8][8], int x, int y, int player);
 bool isDiagonalThreat(int chessBoard[8][8], int x, int y, int player);
+bool isLineThreat(int chessBoard[8][8], int x, int y, int player);
 bool isPawnThreat(int chessBoard[8][8], int x, int y, int player);
+bool isKingThreat(int chessBoard[8][8], int x, int y, int player);
+bool isThreatened(int chessBoard[8][8], int x, int y, int player);
 
 enum Pieces
 {
@@ -32,27 +35,24 @@ int main()
     if (!al_init())
     {
         printf("Failed to initialize Allegro!\n");
-        fflush(stdout);
         return -1;
     }
     if (!al_install_mouse())
     {
         printf("Failed to initialize mouse!\n");
-        fflush(stdout);
         return -1;
     }
     if (!al_init_primitives_addon())
     {
         printf("Failed to initialize Allegro primitives addon!\n");
-        fflush(stdout);
         return -1;
     }
     if (!al_init_image_addon())
     {
         printf("Failed to initialize Allegro image addon!\n");
-        fflush(stdout);
         return -1;
     }
+    fflush(stdout);
 
     // Create a 900x900 display.
     int window_width = 900;
@@ -220,12 +220,39 @@ int *getClickPosition(int x, int y)
     return position;
 }
 
+// Loops through the board until it finds the king and check if it's checked.
+bool isInCheck(int chessBoard[8][8], int x, int y, int player)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if (chessBoard[i][j] == K * player)
+            {
+                return isThreatened(chessBoard, j, i, player);
+            }
+        }
+    }
+    return false;
+}
+
+// Call all functions to check if a given position is threatened or not.
 bool isThreatened(int chessBoard[8][8], int x, int y, int player)
 {
-    if (isHorseThreat(chessBoard, x, y, player))
+    ThreatFunction threatFunctions[] = {
+        isHorseThreat,
+        isDiagonalThreat,
+        isLineThreat,
+        isPawnThreat,
+        isKingThreat};
+    for (int i = 0; i < sizeof(threatFunctions) / sizeof(threatFunctions[0]); i++)
     {
-        return true;
+        if (threatFunctions[i](chessBoard, x, y, player))
+        {
+            return true;
+        }
     }
+    return false;
 }
 
 // Checks if there is any knight attacking the (X,Y) coordinate, pass the current player to ensure it's a opponent knight.
@@ -341,6 +368,8 @@ bool isLineThreat(int chessBoard[8][8], int x, int y, int player)
     }
     return false;
 }
+
+// Checks for pawn threats.
 bool isPawnThreat(int chessBoard[8][8], int x, int y, int player)
 {
     for (int i = -1; i <= 1; i++)
@@ -356,6 +385,8 @@ bool isPawnThreat(int chessBoard[8][8], int x, int y, int player)
     }
     return false;
 }
+
+// Checks for threats of the king on a given position. Essential for endgames.
 bool isKingThreat(int chessBoard[8][8], int x, int y, int player)
 {
     for (int i = -1; i <= 1; i++)
