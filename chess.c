@@ -8,7 +8,7 @@
 
 typedef bool (*ThreatFunction)(int[][8], int, int, int);
 
-void draw_pieces(int chessPieces[8][8], ALLEGRO_BITMAP *bitmap);
+void drawPieces(int chessPieces[8][8], ALLEGRO_BITMAP *bitmap);
 int *pieceBitmapCoordinates(int chessPieces);
 int *getClickPosition(int x, int y);
 bool isHorseThreat(int chessBoard[8][8], int x, int y, int player);
@@ -18,7 +18,7 @@ bool isPawnThreat(int chessBoard[8][8], int x, int y, int player);
 bool isKingThreat(int chessBoard[8][8], int x, int y, int player);
 bool isThreatened(int chessBoard[8][8], int x, int y, int player);
 
-enum Pieces
+enum pieces
 {
     P = 1,
     K = 2,
@@ -55,9 +55,9 @@ int main()
     fflush(stdout);
 
     // Create a 900x900 display.
-    int window_width = 900;
-    int window_height = 900;
-    ALLEGRO_DISPLAY *display = al_create_display(window_width, window_height);
+    int windowWidth = 900;
+    int windowHeight = 900;
+    ALLEGRO_DISPLAY *display = al_create_display(windowWidth, windowHeight);
 
     // Confirms the display was created and set the title.
     if (!display)
@@ -68,9 +68,9 @@ int main()
     al_set_window_title(display, "Chess");
 
     // Set up event queue to handle events.
-    ALLEGRO_EVENT_QUEUE *event_queue = al_create_event_queue();
-    al_register_event_source(event_queue, al_get_display_event_source(display));
-    al_register_event_source(event_queue, al_get_mouse_event_source());
+    ALLEGRO_EVENT_QUEUE *eventQueue = al_create_event_queue();
+    al_register_event_source(eventQueue, al_get_display_event_source(display));
+    al_register_event_source(eventQueue, al_get_mouse_event_source());
 
     // Innitializes the bitmap for the chess pieces.
     ALLEGRO_BITMAP *piecesBitmap = al_load_bitmap("chessPieces.png");
@@ -88,18 +88,18 @@ int main()
         {-P, -P, -P, -P, -P, -P, -P, -P},
         {-R, -N, -B, -Q, -K, -B, -N, -R}};
 
-    draw_pieces(pieces, piecesBitmap);
+    drawPieces(pieces, piecesBitmap);
 
     ALLEGRO_EVENT event;
     ALLEGRO_MOUSE_STATE mouse;
 
     // White pieces to move first.
-    int current_player = -1;
+    int currentPlayer = -1;
 
-    int current_piece;
+    int currentPiece;
     while (1)
     {
-        al_wait_for_event(event_queue, &event);
+        al_wait_for_event(eventQueue, &event);
 
         if (event.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
         {
@@ -107,8 +107,8 @@ int main()
             al_get_mouse_state(&mouse);
 
             int *clickPosition = getClickPosition(mouse.x, mouse.y);
-            current_piece = pieces[clickPosition[0]][clickPosition[1]];
-            draw_pieces(pieces, piecesBitmap);
+            currentPiece = pieces[clickPosition[0]][clickPosition[1]];
+            drawPieces(pieces, piecesBitmap);
         }
 
         if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
@@ -119,13 +119,13 @@ int main()
 
     // Clean up resources
     al_destroy_display(display);
-    al_destroy_event_queue(event_queue);
+    al_destroy_event_queue(eventQueue);
 
     return 0;
 }
 
 // Loops throught the array and draws the pieces.
-void draw_pieces(int chessBoard[8][8], ALLEGRO_BITMAP *bitmap)
+void drawPieces(int chessBoard[8][8], ALLEGRO_BITMAP *bitmap)
 {
     // Set the background color to white
     al_clear_to_color(al_map_rgb(17, 17, 0));
