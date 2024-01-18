@@ -8,23 +8,25 @@
 #define BLACK 1
 #define WHITE -1
 
-typedef bool (*ThreatFunction)(int, int, int);
+typedef bool (*ThreatFunction)(int, int);
 
 void drawPieces(ALLEGRO_BITMAP *bitmap);
+void drawValidMove(int y, int x);
+
 int *pieceBitmapCoordinates(int chessPieces);
-int *getClickPosition(int x, int y);
+int *getClickPosition(int y, int x);
 
-bool isInCheck(int player);
-bool isHorseThreat(int x, int y, int player);
-bool isDiagonalThreat(int x, int y, int player);
-bool isLineThreat(int x, int y, int player);
-bool isPawnThreat(int x, int y, int player);
-bool isKingThreat(int x, int y, int player);
-bool isThreatened(int x, int y, int player);
+bool isInCheck();
+bool isHorseThreat(int y, int x);
+bool isDiagonalThreat(int y, int x);
+bool isLineThreat(int y, int x);
+bool isPawnThreat(int y, int x);
+bool isKingThreat(int y, int x);
+bool isThreatened(int y, int x);
 
-void drawValidMove(int x, int y);
-bool validateMove(int x, int y, int i, int j);
-void horsePattern(int x, int y);
+bool isValidMove(int curY, int curX, int nextY, int nextX);
+void horsePattern(int y, int x);
+void horseMove(int curY, int curX, int nextY, int nextX);
 
 // ENUM with chess notation.
 enum pieces
@@ -51,8 +53,9 @@ int chessBoard[8][8] = {
     {-R, -N, -B, -Q, -K, -B, -N, -R}};
 
 // Variables to game state control.
-int currentPlayer = -1;
-int currentPiece;
+int currentPlayer = WHITE;
+int currentPiece[3] = {0, 0, 0};
+bool isPieceSelected = false;
 
 int main()
 {
@@ -111,20 +114,33 @@ int main()
     while (1)
     {
         al_wait_for_event(eventQueue, &event);
-
-        if (event.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
+        if ((event.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) && !isPieceSelected)
         {
-
             al_get_mouse_state(&mouse);
 
-            int *click = getClickPosition(mouse.x, mouse.y);
-            currentPiece = (chessBoard[click[0]][click[1]] * currentPlayer > 0) ? chessBoard[click[0]][click[1]] : 0;
+            int *click = getClickPosition(mouse.y, mouse.x);
+            if (chessBoard[click[0]][click[1]] * currentPlayer > 0)
+            {
+                currentPiece[0] = chessBoard[click[0]][click[1]];
+                currentPiece[1] = click[0];
+                currentPiece[2] = click[1];
+            }
 
-            printf("%d, %d", click[0], click[1]);
-            fflush(stdout);
-            if (currentPiece == N * currentPlayer)
-                horsePattern(click[1], click[0]);
-            currentPiece = 0;
+            if (currentPiece[0] == N * currentPlayer)
+            {
+                isPieceSelected = true;
+                horsePattern(click[0], click[1]);
+            }
+        }
+        else if ((event.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) && isPieceSelected)
+        {
+            al_get_mouse_state(&mouse);
+
+            int *nextClick = getClickPosition(mouse.y, mouse.x);
+
+            horseMove(currentPiece[1], currentPiece[2], nextClick[0], nextClick[1]);
+            drawPieces(piecesBitmap);
+            isPieceSelected = false;
         }
 
         if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
@@ -218,7 +234,7 @@ int *pieceBitmapCoordinates(int chessPieces)
 }
 
 // Returns which coordinate (X,Y) was clicked on the board.
-int *getClickPosition(int x, int y)
+int *getClickPosition(int y, int x)
 {
     static int position[2] = {-1, -1};
 
@@ -237,15 +253,15 @@ int *getClickPosition(int x, int y)
 }
 
 // Loops through the board until it finds the king and check if it's checked.
-bool isInCheck(int player)
+bool isInCheck()
 {
     for (int i = 0; i < 8; i++)
     {
         for (int j = 0; j < 8; j++)
         {
-            if (chessBoard[i][j] == K * player)
+            if (chessBoard[i][j] == K * currentPlayer)
             {
-                return isThreatened(j, i, player);
+                return isThreatened(j, i);
             }
         }
     }
@@ -253,7 +269,7 @@ bool isInCheck(int player)
 }
 
 // Call all functions to check if a given position is threatened or not.
-bool isThreatened(int x, int y, int player)
+bool isThreatened(int y, int x)
 {
     ThreatFunction threatFunctions[] = {
         isHorseThreat,
@@ -263,7 +279,7 @@ bool isThreatened(int x, int y, int player)
         isKingThreat};
     for (int i = 0; i < sizeof(threatFunctions) / sizeof(threatFunctions[0]); i++)
     {
-        if (threatFunctions[i](x, y, player))
+        if (threatFunctions[i](y, x))
         {
             return true;
         }
@@ -272,7 +288,7 @@ bool isThreatened(int x, int y, int player)
 }
 
 // Checks if there is any knight attacking the (X,Y) coordinate, pass the current player to ensure it's a opponent knight.
-bool isHorseThreat(int x, int y, int player)
+bool isHorseThreat(int y, int x)
 {
     // i = y - 2 checks for the positions below the current, then increases by 4 to check the above positions.
     for (int i = y - 2; i <= y + 2; i += 4)
@@ -288,7 +304,7 @@ bool isHorseThreat(int x, int y, int player)
             if (j > 8 || j < 0)
                 continue;
             // Checks if the position is equal to a knight of the opposite color. Player * -1 indicates that is from the opponent.
-            if (chessBoard[i][j] == player * N * -1)
+            if (chessBoard[i][j] == currentPlayer * N * -1)
             {
                 return true;
             }
@@ -303,7 +319,7 @@ bool isHorseThreat(int x, int y, int player)
         {
             if (i > 8 || i < 0)
                 continue;
-            if (chessBoard[i][j] == player * N * -1)
+            if (chessBoard[i][j] == currentPlayer * N * -1)
             {
                 return true;
             }
@@ -315,10 +331,10 @@ bool isHorseThreat(int x, int y, int player)
 }
 
 // Check for any attack on a diagonal.
-bool isDiagonalThreat(int x, int y, int player)
+bool isDiagonalThreat(int y, int x)
 {
-    int bishop = B * player * -1;
-    int queen = Q * player * -1;
+    int bishop = B * currentPlayer * -1;
+    int queen = Q * currentPlayer * -1;
     int directions[4][2] =
         {
             {-1, -1},
@@ -330,7 +346,7 @@ bool isDiagonalThreat(int x, int y, int player)
     {
         for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i += directions[dir][0], j += directions[dir][1])
         {
-            if ((chessBoard[i][j] * player) > 0)
+            if ((chessBoard[i][j] * currentPlayer) > 0)
             {
                 break;
             }
@@ -350,10 +366,10 @@ bool isDiagonalThreat(int x, int y, int player)
 }
 
 // Check for any attack on a column/row.
-bool isLineThreat(int x, int y, int player)
+bool isLineThreat(int y, int x)
 {
-    int rook = R * player * -1;
-    int queen = Q * player * -1;
+    int rook = R * currentPlayer * -1;
+    int queen = Q * currentPlayer * -1;
     int directions[4][2] =
         {
             {0, -1},
@@ -365,7 +381,7 @@ bool isLineThreat(int x, int y, int player)
     {
         for (int i = y + directions[dir][0], j = x + directions[dir][1]; (i < 8 && i >= 0) && (j < 8 && j >= 0); i += directions[dir][0], j += directions[dir][1])
         {
-            if ((chessBoard[i][j] * player) > 0)
+            if ((chessBoard[i][j] * currentPlayer) > 0)
             {
                 break;
             }
@@ -385,15 +401,15 @@ bool isLineThreat(int x, int y, int player)
 }
 
 // Checks for pawn threats.
-bool isPawnThreat(int x, int y, int player)
+bool isPawnThreat(int y, int x)
 {
     for (int i = -1; i <= 1; i++)
     {
-        if (((x + i) > 8 || (x + i) < 0) || ((y + player) > 8 || (y + player) < 0))
+        if (((x + i) > 8 || (x + i) < 0) || ((y + currentPlayer) > 8 || (y + currentPlayer) < 0))
         {
             continue;
         }
-        if (chessBoard[x + i][y + player] == player * -1 * P)
+        if (chessBoard[x + i][y + currentPlayer] == currentPlayer * -1 * P)
         {
             return true;
         }
@@ -402,7 +418,7 @@ bool isPawnThreat(int x, int y, int player)
 }
 
 // Checks for threats of the king on a given position. Essential for endgames.
-bool isKingThreat(int x, int y, int player)
+bool isKingThreat(int y, int x)
 {
     for (int i = -1; i <= 1; i++)
     {
@@ -412,7 +428,7 @@ bool isKingThreat(int x, int y, int player)
             {
                 continue;
             }
-            if (chessBoard[i][j] == K * player * -1)
+            if (chessBoard[i][j] == K * currentPlayer * -1)
             {
                 return true;
             }
@@ -421,8 +437,8 @@ bool isKingThreat(int x, int y, int player)
     return false;
 }
 
-// Checks if there is any knight attacking the (X,Y) coordinate, pass the current player to ensure it's a opponent knight.
-void horsePattern(int x, int y)
+// Check all possible moves for a given knight and draw the avaible moves.
+void horsePattern(int y, int x)
 {
     // i = y - 2 checks for the positions below the current, then increases by 4 to check the above positions.
     for (int i = y - 2; i <= y + 2; i += 4)
@@ -438,9 +454,9 @@ void horsePattern(int x, int y)
             if (j >= 8 || j < 0)
                 continue;
 
-            if (!validateMove(x, y, i, j))
+            if (!isValidMove(y, x, i, j))
                 continue;
-            drawValidMove(j, i);
+            drawValidMove(i, j);
         }
     }
     // Does the same as above, but for the horizontal options.
@@ -453,40 +469,92 @@ void horsePattern(int x, int y)
             if (i >= 8 || i < 0)
                 continue;
 
-            if (!validateMove(x, y, i, j))
+            if (!isValidMove(y, x, i, j))
                 continue;
-            fflush(stdout);
-            drawValidMove(j, i);
+            drawValidMove(i, j);
         }
     }
     al_flip_display();
 }
 
+void horseMove(int curY, int curX, int nextY, int nextX)
+{
+    printf("CurX: %d,CurY: %d, NextX: %d,NextY: %d\n",curX,curY,nextX,nextY);
+    fflush(stdout);
+    // i = y - 2 checks for the positions below the current, then increases by 4 to check the above positions.
+    for (int i = curY - 2; i <= curY + 2; i += 4)
+    {
+        // Checks if it's not offboard, if it is, then continue to the next loop interaction.
+        if (i >= 8 || i < 0)
+            continue;
+
+        // Procedes to check the two possible moves.
+        for (int j = curX - 1; j <= curX + 1; j += 2)
+        {
+
+            if (j >= 8 || j < 0)
+                continue;
+
+            if (!isValidMove(curY, curX, i, j))
+                continue;
+            printf("NextY: %d,nextX: %d, i: %d, j: %d\n\n", nextY, nextX, i, j);
+            fflush(stdout);
+            if (nextY == i && nextX == j)
+            {
+                chessBoard[curY][curX] = 0;
+                chessBoard[nextY][nextX] = N * currentPlayer;
+            }
+        }
+    }
+    // Does the same as above, but for the horizontal options.
+    for (int j = curX - 2; j <= curX + 2; j += 4)
+    {
+        if (j >= 8 || j < 0)
+            continue;
+        for (int i = curY - 1; i <= curY + 1; i += 2)
+        {
+            if (i >= 8 || i < 0)
+                continue;
+
+            if (!isValidMove(curY, curX, i, j))
+                continue;
+            printf("NextY: %d,nextX: %d, i: %d, j: %d\n\n", nextY, nextX, i, j);
+            fflush(stdout);
+            if (nextY == i && nextX == j)
+            {
+                chessBoard[curY][curX] = 0;
+                chessBoard[nextY][nextX] = N * currentPlayer;
+            }
+        }
+    }
+}
+
 // Draws the avaible movements.
-void drawValidMove(int x, int y)
+void drawValidMove(int y, int x)
 {
     al_draw_filled_circle(100 + (bitmap_size * x), 100 + (bitmap_size * y), 25, al_map_rgb(255, 0, 0));
 }
 
-// Checks if a move is valid, by verifying if it's not a undecover check.
-bool validateMove(int x, int y, int i, int j)
+// Checks if a move creates a validateMove. Returns true if it does.
+bool isValidMove(int curY, int curX, int nextY, int nextX)
 {
     // Checks if the destination is occupied by a enemy piece.
-    if ((chessBoard[y][x] * chessBoard[i][j] < 0) || (chessBoard[i][j] == 0))
+    if ((chessBoard[curY][curX] * chessBoard[nextY][nextX] < 0) || (chessBoard[nextY][nextX] == 0))
     {
         // Copy the current piece position.
-        int temp[3] = {chessBoard[y][x], x, y};
+        int temp[3] = {chessBoard[curY][curX], curY, curX};
 
-        chessBoard[y][x] = 0;
+        chessBoard[curY][curX] = 0;
         if (isInCheck(currentPlayer))
         {
-            chessBoard[temp[2]][temp[1]] = temp[0];
+            chessBoard[temp[1]][temp[2]] = temp[0];
             return false;
         }
         else
         {
-            chessBoard[temp[2]][temp[1]] = temp[0];
+            chessBoard[temp[1]][temp[2]] = temp[0];
             return true;
         }
     }
+    return false;
 }
