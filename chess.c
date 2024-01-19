@@ -25,6 +25,7 @@ int *getClickPosition(int y, int x);
 
 bool isValidMove(int curY, int curX, int nextY, int nextX);
 
+void pawnMove(int y, int x);
 void horseMove(int y, int x);
 void bishopMove(int y, int x);
 void rookMove(int y, int x);
@@ -57,6 +58,8 @@ int chessBoard[8][8] = {
     {-R, -N, -B, -Q, -K, -B, -N, -R}};
 
 // Creates a 2D array with the available movements.
+// It's not the most efficient way to list the avaible movements, however,
+// it's simple and pretty much easy to catch on.
 bool movements[8][8] =
     {
         {0, 0, 0, 0, 0, 0, 0, 0},
@@ -71,7 +74,7 @@ bool movements[8][8] =
 // Variables to game state control.
 int currentPlayer = WHITE;
 
-//Variable that holds the current selected piece information.
+// Variable that holds the current selected piece information.
 //[0]= piece value; [1] = y; [2] = x;
 int currentPiece[3] = {0, 0, 0};
 
@@ -462,6 +465,46 @@ bool isKingThreat(int y, int x)
     return false;
 }
 
+// Function to draw and enable a pawn move.
+void pawnMove(int y, int x)
+{
+    // Normal movement for a pawn, one square to the front.
+    int moveSize = 1;
+
+    // Checks if the selected pawn was already moved before, if it wasn't, make it able to jump two squares.
+    if (((currentPlayer == WHITE) && (y == 6)) || ((currentPlayer == BLACK) && (y == 1)))
+    {
+        moveSize++;
+    }
+    for (int i = 1; i <= moveSize; i++)
+    {
+
+        if (chessBoard[y + i * currentPlayer][x] != 0)
+        {
+
+            break;
+        }
+        if (!isValidMove(y, x, (y + i * currentPlayer), x))
+        {
+            break;
+        }
+        movements[y + i * currentPlayer][x] = 1;
+        drawValidMove((y + i * currentPlayer), x);
+    }
+    for (int j = -1; j <= 1; j++)
+    {
+        if (chessBoard[y + 1 * currentPlayer][x + j] * currentPlayer < 0)
+        {
+
+            if (!isValidMove(y, x, (y + 1 * currentPlayer), (x + j)))
+            {
+                break;
+            }
+            movements[y + 1 * currentPlayer][x + j] = 1;
+            drawValidMove((y + 1 * currentPlayer), x + j);
+        }
+    }
+}
 
 // Function to draw and enable the rook movement.
 // Can be refactored. A function that only receives the directions and runs the loop for can remove a lot of lines.
@@ -516,6 +559,12 @@ void bishopMove(int y, int x)
         {
             if ((chessBoard[i][j] * currentPlayer) > 0)
             {
+                break;
+            }
+            if (chessBoard[i][j] * currentPlayer < 0)
+            {
+                movements[i][j] = 1;
+                drawValidMove(i, j);
                 break;
             }
             if (!isValidMove(y, x, i, j))
@@ -593,6 +642,7 @@ bool isValidMove(int curY, int curX, int nextY, int nextX)
     // If it's a blank square, the multiplication value is going to be 0.
     if ((chessBoard[curY][curX] * chessBoard[nextY][nextX] <= 0))
     {
+
         // Copy the current position of the selected piece into a temporary array.
         int temp[3] = {chessBoard[curY][curX], curY, curX};
 
@@ -602,11 +652,12 @@ bool isValidMove(int curY, int curX, int nextY, int nextX)
         // Assing a variable to the result of the checking of the verification of check.
         bool isChecked = isInCheck();
 
+        printf("%d", isChecked);
         // Return the square for it's original position.
         chessBoard[temp[1]][temp[2]] = temp[0];
 
         // Return if the king was put in check, if it was, the position turns to be invalid.
-        return isChecked;
+        return !isChecked;
     }
 
     // If the previous if conditions are not met, the move is impossible to be performed.
@@ -628,6 +679,7 @@ int validateMove(int y, int x)
         bishopMove(y, x);
         break;
     case P:
+        pawnMove(y, x);
         break;
     case R:
         rookMove(y, x);
