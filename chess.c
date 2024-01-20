@@ -491,7 +491,7 @@ void pawnMove(int y, int x)
         movements[y + i * currentPlayer][x] = 1;
         drawValidMove((y + i * currentPlayer), x);
     }
-    for (int j = -1; j <= 1; j++)
+    for (int j = -1; j <= 1; j+=2)
     {
         if (chessBoard[y + 1 * currentPlayer][x + j] * currentPlayer < 0)
         {
