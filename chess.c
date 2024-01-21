@@ -25,6 +25,7 @@ int *getClickPosition(int y, int x);
 
 bool isValidMove(int curY, int curX, int nextY, int nextX);
 
+void kingMove(int y, int x);
 void pawnMove(int y, int x);
 void horseMove(int y, int x);
 void bishopMove(int y, int x);
@@ -437,7 +438,7 @@ bool isPawnThreat(int y, int x)
         {
             continue;
         }
-        if (chessBoard[x + i][y + currentPlayer] == currentPlayer * -1 * P)
+        if (chessBoard[y + currentPlayer][x + i] == currentPlayer * -1 * P)
         {
             return true;
         }
@@ -463,6 +464,30 @@ bool isKingThreat(int y, int x)
         }
     }
     return false;
+}
+// Function to draw and enable a pawn move.
+void kingMove(int y, int x)
+{
+    for (int i = -1; i <= 1; i++)
+    {
+        if (y + i < 0 || y + i >= 8)
+        {
+            continue;
+        }
+        for (int j = -1; j <= 1; j++)
+        {
+            if (x + j < 0 || x + j >= 8)
+            {
+                continue;
+            }
+            if (!isValidMove(y, x, y + i, x + j))
+            {
+                continue;
+            }
+            movements[y + i][x + j] = 1;
+            drawValidMove((y + i), (x + j));
+        }
+    }
 }
 
 // Function to draw and enable a pawn move.
@@ -491,7 +516,7 @@ void pawnMove(int y, int x)
         movements[y + i * currentPlayer][x] = 1;
         drawValidMove((y + i * currentPlayer), x);
     }
-    for (int j = -1; j <= 1; j+=2)
+    for (int j = -1; j <= 1; j += 2)
     {
         if (chessBoard[y + 1 * currentPlayer][x + j] * currentPlayer < 0)
         {
@@ -670,6 +695,7 @@ int validateMove(int y, int x)
     switch (abs(currentPiece[0]))
     {
     case K:
+        kingMove(y, x);
         break;
     case N:
         horseMove(y, x);
