@@ -16,14 +16,13 @@ bool isDiagonalThreat(int y, int x);
 bool isLineThreat(int y, int x);
 bool isPawnThreat(int y, int x);
 bool isKingThreat(int y, int x);
+bool isValidMove(int curY, int curX, int nextY, int nextX);
 
 void drawPieces(ALLEGRO_BITMAP *bitmap);
 void drawValidMove(int y, int x);
 
 int *pieceBitmapCoordinates(int chessPieces);
 int *getClickPosition(int y, int x);
-
-bool isValidMove(int curY, int curX, int nextY, int nextX);
 
 void kingMove(int y, int x);
 void pawnMove(int y, int x);
@@ -670,16 +669,18 @@ bool isValidMove(int curY, int curX, int nextY, int nextX)
 
         // Copy the current position of the selected piece into a temporary array.
         int temp[3] = {chessBoard[curY][curX], curY, curX};
+        int tempNext[3] = {chessBoard[nextY][nextX], nextY, nextX};
 
         // Sets the selected square to 0, to enable the checking verification.
+        chessBoard[nextY][nextX] = chessBoard[curY][curX];
         chessBoard[curY][curX] = 0;
 
         // Assing a variable to the result of the checking of the verification of check.
         bool isChecked = isInCheck();
 
-        printf("%d", isChecked);
         // Return the square for it's original position.
         chessBoard[temp[1]][temp[2]] = temp[0];
+        chessBoard[tempNext[1]][tempNext[2]] = tempNext[0];
 
         // Return if the king was put in check, if it was, the position turns to be invalid.
         return !isChecked;
