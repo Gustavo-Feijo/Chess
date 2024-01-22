@@ -7,6 +7,7 @@
 #define bitmap_size 100
 #define BLACK 1
 #define WHITE -1
+#define window_size 900
 
 typedef bool (*ThreatFunction)(int, int);
 bool isThreatened(int y, int x);
@@ -16,7 +17,6 @@ bool isDiagonalThreat(int y, int x);
 bool isLineThreat(int y, int x);
 bool isPawnThreat(int y, int x);
 bool isKingThreat(int y, int x);
-bool isValidMove(int curY, int curX, int nextY, int nextX);
 
 void drawPieces(ALLEGRO_BITMAP *bitmap);
 void drawValidMove(int y, int x);
@@ -29,6 +29,8 @@ void pawnMove(int y, int x);
 void horseMove(int y, int x);
 void bishopMove(int y, int x);
 void rookMove(int y, int x);
+
+bool isValidMove(int curY, int curX, int nextY, int nextX);
 int validateMove(int y, int x);
 
 void clearMovements();
@@ -74,9 +76,11 @@ bool movements[8][8] =
 // Variables to game state control.
 int currentPlayer = WHITE;
 
-// Variable that holds the current selected piece information.
-//[0]= piece value; [1] = y; [2] = x;
-int currentPiece[3] = {0, 0, 0};
+// Variable that holds the current piece (Y,X);
+int currentPiece[2] = {0, 0};
+
+// Variable that holds the current piece value.
+int selectedPiece = 0;
 
 int main()
 {
@@ -104,10 +108,14 @@ int main()
     }
     fflush(stdout);
 
-    // Create a 900x900 display.
-    int windowWidth = 900;
-    int windowHeight = 900;
-    ALLEGRO_DISPLAY *display = al_create_display(windowWidth, windowHeight);
+    // Creates the display, event queue, timer, event and mouse states.
+    ALLEGRO_DISPLAY *display = al_create_display(window_size, window_size);
+    ALLEGRO_EVENT_QUEUE *eventQueue = al_create_event_queue();
+    ALLEGRO_BITMAP *piecesBitmap = al_load_bitmap("chessPieces.png");
+    ALLEGRO_TIMER *timer = al_create_timer(1.0 / 60.0);
+
+    ALLEGRO_EVENT event;
+    ALLEGRO_MOUSE_STATE mouse;
 
     // Confirms the display was created and set the title.
     if (!display)
@@ -115,47 +123,63 @@ int main()
         printf("Failed to create display!\n");
         return -1;
     }
+    // Confirms the display was created and set the title.
+    if (!timer)
+    {
+        printf("Failed to create timer!\n");
+        return -1;
+    }
+    // Confirms the display was created and set the title.
+    if (!eventQueue)
+    {
+        printf("Failed to create event queue!\n");
+        return -1;
+    }
+    // Confirms the display was created and set the title.
+    if (!piecesBitmap)
+    {
+        printf("Failed to create bitmap!\n");
+        return -1;
+    }
+
     al_set_window_title(display, "Chess");
 
     // Set up event queue to handle events.
-    ALLEGRO_EVENT_QUEUE *eventQueue = al_create_event_queue();
     al_register_event_source(eventQueue, al_get_display_event_source(display));
     al_register_event_source(eventQueue, al_get_mouse_event_source());
 
-    // Innitializes the bitmap for the chess pieces.
-    ALLEGRO_BITMAP *piecesBitmap = al_load_bitmap("chessPieces.png");
-
+    // Draw the initial state of the board.
     drawPieces(piecesBitmap);
-
-    ALLEGRO_EVENT event;
-    ALLEGRO_MOUSE_STATE mouse;
 
     // White pieces to move first.
 
-    while (1)
+    while (timer)
     {
         al_wait_for_event(eventQueue, &event);
+
         if (event.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
         {
             al_get_mouse_state(&mouse);
-            int *click = getClickPosition(mouse.y, mouse.x);
 
-            if (click[0] != -1)
+            // Check if the mouse click was not offboard.
+            if ((mouse.x > 50 && mouse.x < 850) && (mouse.y > 50 && mouse.y < 850))
             {
-                if (currentPiece[0] == 0 && ((chessBoard[click[0]][click[1]] * currentPlayer) > 0))
+                int *click = getClickPosition(mouse.y, mouse.x);
+
+                // Verify if a piece is selected, if it's not, check for a click on a ally piece and select it.
+                if (selectedPiece == 0 && ((chessBoard[click[0]][click[1]] * currentPlayer) > 0))
                 {
-                    currentPiece[0] = chessBoard[click[0]][click[1]];
-                    currentPiece[1] = click[0];
-                    currentPiece[2] = click[1];
+                    selectedPiece = chessBoard[click[0]][click[1]];
+                    currentPiece[0] = click[0];
+                    currentPiece[1] = click[1];
                     validateMove(click[0], click[1]);
                     al_flip_display();
                 }
                 else if (movements[click[0]][click[1]] == 1)
                 {
-
-                    chessBoard[currentPiece[1]][currentPiece[2]] = 0;
-                    chessBoard[click[0]][click[1]] = currentPiece[0];
-                    currentPiece[0] = 0;
+                    // Check for a click on a position that is a valid movement.
+                    chessBoard[currentPiece[0]][currentPiece[1]] = 0;
+                    chessBoard[click[0]][click[1]] = selectedPiece;
                     clearMovements();
                     drawPieces(piecesBitmap);
                     al_flip_display();
@@ -163,7 +187,7 @@ int main()
                 }
                 else
                 {
-                    currentPiece[0] = 0;
+                    // If none of the above, then desselect the piece and clear the possible moves selection.
                     clearMovements();
                     drawPieces(piecesBitmap);
                     al_flip_display();
@@ -177,8 +201,10 @@ int main()
     }
 
     // Clean up resources
+    al_destroy_bitmap(piecesBitmap);
     al_destroy_display(display);
     al_destroy_event_queue(eventQueue);
+    al_destroy_timer(timer);
 
     return 0;
 }
@@ -265,17 +291,10 @@ int *getClickPosition(int y, int x)
 {
     static int position[2] = {-1, -1};
 
-    // Checks if the click is in the board or in the boarder, if it's in the boarder, returns -1 to both positions.
-    if ((x > 50 && x < 850) && (y > 50 && y < 850))
-    {
-        position[0] = (y - 50) / bitmap_size;
-        position[1] = (x - 50) / bitmap_size;
-    }
-    else
-    {
-        position[0] = -1;
-        position[1] = -1;
-    }
+    // Returns the respective position of the clicked coordinate.
+    position[0] = (y - 50) / bitmap_size;
+    position[1] = (x - 50) / bitmap_size;
+
     return position;
 }
 
@@ -304,6 +323,7 @@ bool isThreatened(int y, int x)
         isLineThreat,
         isPawnThreat,
         isKingThreat};
+    // Loops through each threat function and, if any is true, it's threatened.
     for (int i = 0; i < sizeof(threatFunctions) / sizeof(threatFunctions[0]); i++)
     {
         if (threatFunctions[i](y, x))
@@ -698,7 +718,7 @@ bool isValidMove(int curY, int curX, int nextY, int nextX)
 // Receives the piece that was first selected and call the function to validate the possible moves and display them.
 int validateMove(int y, int x)
 {
-    switch (abs(currentPiece[0]))
+    switch (abs(selectedPiece))
     {
     case K:
         kingMove(y, x);
@@ -725,6 +745,9 @@ int validateMove(int y, int x)
 // Clear the 2D array with the current avaible moviments.
 void clearMovements()
 {
+    // Desselect any piece.
+    selectedPiece = 0;
+
     for (int i = 0; i < 8; i++)
     {
         for (int j = 0; j < 8; j++)
