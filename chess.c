@@ -13,15 +13,15 @@ typedef bool (*PatternFunction)(int, int, bool);
 
 bool isThreatened(int y, int x);
 bool isInCheck();
+
 bool isValidMove(int curY, int curX, int nextY, int nextX);
+int validateMove(int y, int x);
 
 void drawPieces(ALLEGRO_BITMAP *bitmap);
 void drawValidMove(int y, int x);
 
 int *pieceBitmapCoordinates(int chessPieces);
 int *getClickPosition(int y, int x);
-
-int validateMove(int y, int x);
 
 bool diagonalPattern(int y, int x, bool verifyCheck);
 bool horsePattern(int x, int y, bool verifyCheck);
@@ -325,7 +325,7 @@ bool isInCheck()
     return false;
 }
 
-// Call all functions to check if a given position is threatened or not.
+// Call all pattern functions to check if a given position is threatened or not.
 bool isThreatened(int y, int x)
 {
     PatternFunction patternFunction[] = {
@@ -350,7 +350,7 @@ void drawValidMove(int y, int x)
     al_draw_filled_circle(100 + (bitmap_size * x), 100 + (bitmap_size * y), 25, al_map_rgb(255, 0, 0));
 }
 
-// Checks if a move creates a discovered check.
+// Checks if a the move block a check or create a discovered check.
 bool isValidMove(int curY, int curX, int nextY, int nextX)
 {
     // Check if the current position multiplied by the next position is negative.
@@ -445,7 +445,6 @@ bool horsePattern(int y, int x, bool verifyCheck)
             // Switch case to determinate which is the function of the current call.
             // If it's false, then it's a validation of a movement to be done by a horse.
             // If it's false, it checks for a horse checking the current position.
-
             switch (verifyCheck)
             {
             case 0:
@@ -464,7 +463,6 @@ bool horsePattern(int y, int x, bool verifyCheck)
                 // Checks if the position is equal to a knight of the opposite color. Player * -1 indicates that is from the opponent.
                 if (chessBoard[i][j] == currentPlayer * N * -1)
                 {
-
                     return true;
                 }
             }
@@ -565,6 +563,9 @@ bool diagonalPattern(int y, int x, bool verifyCheck)
     return false;
 }
 
+//Loops throught each direction.
+//If verifyCheck is false, check the avaible movements of the piece.
+//If verifyCheck is true, verify if the position have a threat on the same line.
 bool linePattern(int y, int x, bool verifyCheck)
 {
     int rook = R * currentPlayer * -1;
@@ -619,6 +620,7 @@ bool linePattern(int y, int x, bool verifyCheck)
     return false;
 }
 
+//Verify if a pawn move is avaible or if a given position is threated by a pawn.
 bool pawnPattern(int y, int x, bool verifyCheck)
 {
     switch (verifyCheck)
