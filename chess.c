@@ -554,11 +554,16 @@ void rookMove(int y, int x)
             {
                 break;
             }
-
             // Checks if the move creates a discovered check, if it does, break the loop.
             if (!isValidMove(y, x, i, j))
                 break;
 
+            if ((chessBoard[i][i] * currentPlayer) < 0)
+            {
+                movements[i][j] = 1;
+                drawValidMove(i, j);
+                break;
+            }
             // Change the value on the movements array at the given position to identify that is a valid move.
             movements[i][j] = 1;
 
