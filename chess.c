@@ -459,7 +459,7 @@ bool isPawnThreat(int y, int x)
 {
     for (int i = -1; i <= 1; i++)
     {
-        if (((x + i) > 8 || (x + i) < 0) || ((y + currentPlayer) > 8 || (y + currentPlayer) < 0))
+        if (((x + i) >= 8 || (x + i) < 0) || ((y + currentPlayer) >= 8 || (y + currentPlayer) < 0))
         {
             continue;
         }
@@ -478,7 +478,7 @@ bool isKingThreat(int y, int x)
     {
         for (int j = -1; j <= 1; j++)
         {
-            if ((i > 8 && i < 0) || (j > 8 && j < 0))
+            if (i >= 8 || i < 0 || j >= 8 || j < 0)
             {
                 continue;
             }
