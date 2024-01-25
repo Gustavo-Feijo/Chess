@@ -17,6 +17,7 @@ bool isDiagonalThreat(int y, int x);
 bool isLineThreat(int y, int x);
 bool isPawnThreat(int y, int x);
 bool isKingThreat(int y, int x);
+bool isCheckmate();
 
 void drawPieces(ALLEGRO_BITMAP *bitmap);
 void drawValidMove(int y, int x);
@@ -31,7 +32,7 @@ void bishopMove(int y, int x);
 void rookMove(int y, int x);
 
 bool isValidMove(int curY, int curX, int nextY, int nextX);
-int validateMove(int y, int x);
+void validateMove(int y, int x);
 
 void clearMovements();
 
@@ -184,6 +185,11 @@ int main()
                     drawPieces(piecesBitmap);
                     al_flip_display();
                     currentPlayer *= -1;
+                    if (isInCheck())
+                    {
+                        if (isCheckmate())
+                            break;
+                    }
                 }
                 else
                 {
@@ -334,7 +340,7 @@ bool isThreatened(int y, int x)
     return false;
 }
 
-// Checks if there is any knight attacking the (X,Y) coordinate, pass the current player to ensure it's a opponent knight.
+// Checks if there is any knight attacking the (Y,X) coordinate, pass the current player to ensure it's a opponent knight.
 bool isHorseThreat(int y, int x)
 {
     // i = y - 2 checks for the positions below the current, then increases by 4 to check the above positions.
@@ -522,10 +528,12 @@ void pawnMove(int y, int x)
     }
     for (int i = 1; i <= moveSize; i++)
     {
-
+        if ((y + i * currentPlayer) < 0 || (y + i * currentPlayer) >= 8)
+        {
+            continue;
+        }
         if (chessBoard[y + i * currentPlayer][x] != 0)
         {
-
             break;
         }
         if (!isValidMove(y, x, (y + i * currentPlayer), x))
@@ -537,6 +545,10 @@ void pawnMove(int y, int x)
     }
     for (int j = -1; j <= 1; j += 2)
     {
+        if ((y + 1 * currentPlayer) < 0 || (y + 1 * currentPlayer) >= 8 || (x + j) < 0 || (x + j) >= 8)
+        {
+            continue;
+        }
         if (chessBoard[y + 1 * currentPlayer][x + j] * currentPlayer < 0)
         {
 
@@ -627,6 +639,7 @@ void bishopMove(int y, int x)
 // Function to draw and enable the horse movement.
 void horseMove(int y, int x)
 {
+
     // i = y - 2 checks for the positions below the current, then increases by 4 to check the above positions.
     for (int i = y - 2; i <= y + 2; i += 4)
     {
@@ -645,6 +658,7 @@ void horseMove(int y, int x)
             // Do the validation of the move, if it's not a valid one, just continue to the next loop iteration.
             if (!isValidMove(y, x, i, j))
             {
+
                 continue;
             }
 
@@ -716,7 +730,7 @@ bool isValidMove(int curY, int curX, int nextY, int nextX)
 }
 
 // Receives the piece that was first selected and call the function to validate the possible moves and display them.
-int validateMove(int y, int x)
+void validateMove(int y, int x)
 {
     switch (abs(selectedPiece))
     {
@@ -755,4 +769,54 @@ void clearMovements()
             movements[i][j] = 0;
         }
     }
+}
+
+// Verifies if there is a checkmate.
+bool isCheckmate()
+{
+
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if (chessBoard[i][j] * currentPlayer > 0)
+            {
+                switch (abs(chessBoard[i][j]))
+                {
+                case K:
+                    kingMove(i, j);
+                    break;
+                case N:
+                    horseMove(i, j);
+                    break;
+                case Q:
+                    rookMove(i, j);
+                    bishopMove(i, j);
+                    break;
+                case P:
+                    pawnMove(i, j);
+                    break;
+                case R:
+                    rookMove(i, j);
+                    break;
+                case B:
+                    bishopMove(i, j);
+                    break;
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if (movements[i][j] == 1)
+            {
+                clearMovements();
+                return false;
+            }
+        }
+    }
+    return true;
 }
